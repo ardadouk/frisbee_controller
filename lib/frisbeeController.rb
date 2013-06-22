@@ -151,6 +151,140 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
   end
 end
 
+module OmfRc::ResourceProxy::ImagezipServer #frisbee server
+  include OmfRc::ResourceProxyDSL
+
+  require 'omf_common/exec_app'
+
+  register_proxy :imagezip_server, :create_by => :frisbeeController
+
+  utility :common_tools
+  utility :platform_tools
+
+  property :app_id, :default => nil
+  property :binary_path, :default => '/bin/nc'
+  property :map_err_to_out, :default => false
+
+  property :ip
+  property :port
+  property :image_name
+
+  hook :after_initial_configured do |server|
+    server.property.app_id = server.hrn.nil? ? server.uid : server.hrn
+
+    ExecApp.new(server.property.app_id, server.build_command_line, server.property.map_err_to_out) do |event_type, app_id, msg|
+      server.process_event(server, event_type, app_id, msg)
+    end
+  end
+
+  # This method processes an event coming from the application instance, which
+  # was started by this Resource Proxy (RP). It is a callback, which is usually
+  # called by the ExecApp class in OMF
+  #
+  # @param [AbstractResource] res this RP
+  # @param [String] event_type the type of event from the app instance
+  #                 (STARTED, DONE.OK, DONE.ERROR, STDOUT, STDERR)
+  # @param [String] app_id the id of the app instance
+  # @param [String] msg the message carried by the event
+  #
+  def process_event(res, event_type, app_id, msg)
+      logger.info "Frisbeed: App Event from '#{app_id}' - #{event_type}: '#{msg}'"
+      if event_type == 'EXIT' #maybe i should inform you for every event_type, we'll see.
+        res.inform(:status, {
+          status_type: 'APP_EVENT',
+          event: event_type.to_s.upcase,
+          app: app_id,
+          exit_code: msg,
+          msg: msg
+        }, :ALL)
+      elsif event_type == 'STDOUT'
+        res.inform(:status, {
+          status_type: 'APP_EVENT',
+          event: event_type.to_s.upcase,
+          app: app_id,
+          exit_code: msg,
+          msg: msg
+        }, :ALL)
+      end
+  end
+
+  # Build the command line, which will be used to add a new user.
+  #
+  work('build_command_line') do |res|
+    cmd_line = "env -i " # Start with a 'clean' environment
+    cmd_line += res.property.binary_path + " " # the /usr/sbin/frisbeed
+    cmd_line += "-d -l  " +  res.property.ip + " " + res.property.port.to_s + " > " +  res.property.image_name
+    cmd_line
+  end
+end
+
+
+module OmfRc::ResourceProxy::ImagezipClient
+  include OmfRc::ResourceProxyDSL
+
+  require 'omf_common/exec_app'
+
+  register_proxy :imagezip_client, :create_by => :frisbeeController
+
+  utility :common_tools
+  utility :platform_tools
+
+  property :app_id, :default => nil
+  property :binary_path, :default => '/usr/sbin/imagezip'
+  property :map_err_to_out, :default => false
+
+  property :ip
+  property :port
+  property :hardrive
+  property :node_topic
+
+   hook :after_initial_configured do |client|
+    client.property.app_id = client.hrn.nil? ? client.uid : client.hrn
+
+    #TODO do the folowing
+    #1. subscribe to nodes topic.
+    #2. create application proxy
+    #3. configure it with binary path and properties
+    #4. run the application
+    #5. on message inform EC
+
+    OmfCommon.comm.subscribe(client.property.node_topic) do |node_rc|
+      unless node_rc.error?
+        node_rc.create(:application, hrn: client.property.node_topic) do |reply_msg|
+          if reply_msg.success?
+            app = reply_msg.resource
+            app.on_subscribed do
+              app.on_message do |m|
+                if m.read_property("status_type") == 'APP_EVENT'
+                  client.inform(:status, {
+                    status_type: 'APP_EVENT',
+                    event: m.read_property("event"),
+                    app: m.read_property("app"),
+                    exit_code: m.read_property("exit_code"),
+                    msg: m.read_property("msg")
+                  }, :ALL)
+                end
+              end
+              app.configure(binary_path: client.property.binary_path)
+              sleep 1
+              params = {
+                :hardrive => {:type => 'String', :cmd => '-z1', :mandatory => true, :order => 1, :value => client.property.hardrive},
+                :ip => {:type => 'String', :cmd => '- | nc -q 0', :mandatory => true, :order => 2, :value => client.property.ip},
+                :port => {:type => 'Integer', :cmd => '', :mandatory => true, :order => 3, :value => client.property.port}
+              }
+              app.configure(parameters: params)
+              sleep 1
+              app.configure(state: :running)
+            end
+          else
+            error ">>> App Resource failed to create - #{reply_msg[:reason]}"
+          end
+        end
+      end
+    end
+  end
+end
+
 entity = OmfCommon::Auth::Certificate.create_from_x509(File.read("/home/ardadouk/.omf/urc.pem"),
                                                        File.read("/home/ardadouk/.omf/user_rc_key.pem"))
 
