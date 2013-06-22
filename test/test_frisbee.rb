@@ -1,9 +1,11 @@
 
 require 'omf_common'
+#must be running: omf_rc -u xmpp://omf_rc:1234@localhost -i node_topic
+
 
 def create_client(controller)
 
-  controller.create(:frisbee, hrn: 'frisbee client', multicast_interface: 10.0.1.1, multicast_address: 224.0.0.1, port: 7000, hardrive: "/dev/sda", node_topic: "") do |reply_msg|#TODO what is the topic
+  controller.create(:frisbee, hrn: 'frisbee client', multicast_interface: "10.64.45.104", multicast_address: "224.0.0.1", port: "7000", hardrive: "/dev/sda", node_topic: "node_topic") do |reply_msg|#TODO what is the topic
     if reply_msg.success?
       server = reply_msg.resource
       server.on_subscribed do
@@ -44,7 +46,7 @@ OmfCommon.init(:development, communication: { url: 'xmpp://beta:1234@localhost' 
       end
     end
 
-    OmfCommon.eventloop.after(10) { comm.disconnect }
+    #OmfCommon.eventloop.after(10) { comm.disconnect }
     comm.on_interrupted { comm.disconnect }
   end
 end
