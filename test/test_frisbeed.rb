@@ -3,7 +3,7 @@ require 'omf_common'
 
 def create_server(controller)
 
-  controller.create(:frisbeed, hrn: 'frisbee server', multicast_interface: 10.0.1.200, multicast_address: 224.0.0.1, port: 7000, speed: 50000000, image: "/var/lib/omf-images-5.4/baseline.ndz") do |reply_msg|
+  controller.create(:frisbeed, hrn: 'frisbee server', multicast_interface: "10.64.45.104", multicast_address: "224.0.0.1", port: "7000", speed: "50000000", image: "/var/lib/omf-images-5.4/baseline.ndz") do |reply_msg|
     if reply_msg.success?
       server = reply_msg.resource
       server.on_subscribed do
@@ -44,7 +44,7 @@ OmfCommon.init(:development, communication: { url: 'xmpp://beta:1234@localhost' 
       end
     end
 
-    OmfCommon.eventloop.after(10) { comm.disconnect }
+    #OmfCommon.eventloop.after(10) { comm.disconnect }
     comm.on_interrupted { comm.disconnect }
   end
 end
