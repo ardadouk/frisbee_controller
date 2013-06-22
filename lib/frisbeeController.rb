@@ -34,7 +34,7 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
     server.property.app_id = server.hrn.nil? ? server.uid : server.hrn
 
     ExecApp.new(server.property.app_id, server.build_command_line, server.property.map_err_to_out) do |event_type, app_id, msg|
-      user.process_event(server, event_type, app_id, msg)
+      server.process_event(server, event_type, app_id, msg)
     end
   end
 
@@ -50,10 +50,22 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
   #
   def process_event(res, event_type, app_id, msg)
       logger.info "Frisbeed: App Event from '#{app_id}' - #{event_type}: '#{msg}'"
-      if event_type == 'EXIT'
-        #TODO frisbee server exit inform messages
+      if event_type == 'EXIT' #maybe i should inform you for every event_type.
+        res.inform(:status, {
+          status_type: 'APP_EVENT',
+          event: event_type.to_s.upcase,
+          app: app_id,
+          exit_code: msg,
+          msg: msg
+        }, :ALL)
       elsif event_type == 'STDOUT'
-        #TODO frisbee server normal messages inform
+        res.inform(:status, {
+          status_type: 'APP_EVENT',
+          event: event_type.to_s.upcase,
+          app: app_id,
+          exit_code: msg,
+          msg: msg
+        }, :ALL)
       end
   end
 
@@ -64,8 +76,8 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
     cmd_line += res.property.binary_path + " " # the /usr/sbin/frisbeed
     cmd_line += "-i " +  res.property.multicast_interface + " " # -i for interface
     cmd_line += "-m " +  res.property.multicast_address + " "   # -m for address
-    cmd_line += "-p " +  res.property.port + " "                # -p for port
-    cmd_line += "-W " +  res.property.speed + " "               # -W for bandwidth
+    cmd_line += "-p " + res.property.port.to_s  + " "           # -p for port
+    cmd_line += "-W " + res.property.speed.to_s + " "           # -W for bandwidth
     cmd_line += res.property.image                              # image no arguement
     cmd_line
   end
@@ -100,6 +112,42 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
     #3. configure it with binary path and properties
     #4. run the application
     #5. on message inform EC
+
+    OmfCommon.comm.subscribe(client.property.node_topic) do |node_rc|
+      unless node_rc.error?
+        node_rc.create(:application, hrn: client.property.node_topic) do |reply_msg|
+          if reply_msg.success?
+            app = reply_msg.resource
+            app.on_subscribed do
+              app.on_message do |m|
+                if m.read_property("status_type") == 'APP_EVENT'
+                  client.inform(:status, {
+                    status_type: 'APP_EVENT',
+                    event: m.read_property("event"),
+                    app: m.read_property("app"),
+                    exit_code: m.read_property("exit_code"),
+                    msg: m.read_property("msg")
+                  }, :ALL)
+                end
+              end
+              app.configure(binary_path: client.property.binary_path)
+              sleep 1
+              params = {
+                :multicast_interface => {:type => 'String', :cmd => '-i', :mandatory => true, :order => 1, :value => client.property.multicast_interface},
+                :multicast_address => {:type => 'String', :cmd => '-m', :mandatory => true, :order => 2, :value => client.property.multicast_address},
+                :port => {:type => 'Integer', :cmd => '-p', :mandatory => true, :order => 3, :value => client.property.port},
+                :hardrive => {:type => 'String', :cmd => '', :mandatory => true, :order => 4, :value => client.property.hardrive}
+              }
+              app.configure(parameters: params)
+              sleep 1
+              app.configure(state: :running)
+            end
+          else
+            error ">>> App Resource failed to create - #{reply_msg[:reason]}"
+          end
+        end
+      end
+    end
   end
 end
 
