@@ -1,0 +1,13 @@
+---
+# default topic name is this machine's hostname
+# default xmpp user name/password is "hostname-pid"
+# this is to ensure that every RC has its own topic and XMPP account
+:uid: "node_topic"
+:uri: xmpp://omf_rc:1234@localhost
+:environment: development
+:debug: true
+
+:auth:
+  :root_cert_dir: /home/ardadouk/.omf/trusted_roots
+  :entity_cert: /home/ardadouk/.omf/urc.pem
+  :entity_key: //home/ardadouk/.omf/user_rc_key.pem
