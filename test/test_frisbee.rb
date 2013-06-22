@@ -1,6 +1,7 @@
 
 require 'omf_common'
-#must be running: omf_rc -u xmpp://omf_rc:1234@localhost -i node_topic
+#must be running: omf_rc -c ~/omf_rc_config
+#to simulate omf_rc of the node
 
 
 def create_client(controller)
