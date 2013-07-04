@@ -25,7 +25,7 @@ module OmfRc::ResourceProxy::FrisbeeController
     @nodes.each do |node|
       tmp = {node_name: node[0], node_ip: node[1][:ip], node_mac: node[1][:mac], node_cm_ip: node[1][:cm_ip]}
       $all_nodes << tmp
-    endreturn p
+    end
   end
 
   request :ports do |res|
