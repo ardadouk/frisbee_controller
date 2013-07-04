@@ -13,7 +13,7 @@ $all_nodes = []
 $ports = []
 module OmfRc::ResourceProxy::FrisbeeController
   include OmfRc::ResourceProxyDSL
-  property :ports
+  property :ports, :default => nil
 
   register_proxy :frisbeeController
 
@@ -140,7 +140,7 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
    hook :after_initial_configured do |client|
     node = nil
     $all_nodes.each do |n|
-      if n[:node_name] == value[:node].to_sym
+      if n[:node_name] == res.property.node_topic.to_sym
         node = n
       end
     end
