@@ -161,8 +161,9 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
 
     command = "#{client.property.binary_path} - i #{client.property.multicast_interface} -m #{client.property.multicast_address} "
     command += "-p #{client.property.port} #{client.property.hardrive}"
+    puts "########### running command is #{command}"
 
-    host = Net::Telnet.new("Host" => client.property.multicast_interface.to_s, "Timeout" => 60, "Prompt" => '(I have no name!@node)(\\d+)(:)(\\/)[#$]')
+    host = Net::Telnet.new("Host" => client.property.multicast_interface.to_s, "Timeout" => 60)#, "Prompt" => '(I have no name!@node)(\\d+)(:)(\\/)[#$]')
     host.cmd(command.to_s) do |c|
       client.inform(:status, {
           status_type: 'APP_EVENT',
