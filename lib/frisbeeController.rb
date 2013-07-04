@@ -1,13 +1,42 @@
 require 'omf_rc'
 require 'omf_common'
+require 'net/telnet'
 
 $stdout.sync = true
 
+@config = YAML.load_file('../etc/configuration.yaml')
+@auth = @config[:auth]
+@xmpp = @config[:xmpp]
 
+$all_nodes = []
 module OmfRc::ResourceProxy::FrisbeeController
   include OmfRc::ResourceProxyDSL
+  property :ports, :default => []
 
   register_proxy :frisbeeController
+
+  hook :before_ready do |res|
+    @config = YAML.load_file('../etc/configuration.yaml')
+    @domain = @config[:domain]
+    @nodes = @config[:nodes]
+
+    @nodes.each do |node|
+      tmp = {node_name: node[0], node_ip: node[1][:ip], node_mac: node[1][:mac], node_cm_ip: node[1][:cm_ip]}
+      $all_nodes << tmp
+    end
+  end
+
+  request :ports do |res|
+    p = 7000
+    loop do
+      if res.properties.port.include?(p)
+        p +=1
+      else
+        res.property.ports << p
+        return p
+      end
+    end
+  end
 end
 
 module OmfRc::ResourceProxy::Frisbeed #frisbee server
@@ -24,11 +53,11 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
   property :binary_path, :default => '/usr/sbin/frisbeed'
   property :map_err_to_out, :default => false
 
-  property :multicast_interface #multicast interface, example 10.0.1.200 (-i arguement)
-  property :multicast_address   #multicast address, example 224.0.0.1 (-m arguement)
-  property :port                #port, example 7000 (-p arguement)
-  property :speed               #bandwidth speed in bits/sec, example 50000000 (-W arguement)
-  property :image               #image to burn, example /var/lib/omf-images-5.4/baseline.ndz (no arguement)
+  property :multicast_interface, :default => "10.0.0.200" #multicast interface, example 10.0.1.200 (-i arguement)
+  property :multicast_address, :default => "224.0.0.1"    #multicast address, example 224.0.0.1 (-m arguement)
+  property :port                                          #port, example 7000 (-p arguement)
+  property :speed, :default => 50000000                   #bandwidth speed in bits/sec, example 50000000 (-W arguement)
+  property :image                                         #image to burn, example /var/lib/omf-images-5.4/baseline.ndz (no arguement)
 
    hook :after_initial_configured do |server|
     server.property.app_id = server.hrn.nil? ? server.uid : server.hrn
@@ -83,6 +112,7 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
   end
 end
 
+#this one is using telnet to start frisbee on node
 module OmfRc::ResourceProxy::Frisbee #frisbee client
   include OmfRc::ResourceProxyDSL
 
@@ -97,61 +127,114 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
   property :binary_path, :default => '/usr/sbin/frisbee'
   property :map_err_to_out, :default => false
 
-  property :multicast_interface #multicast interface, example 10.0.1.200 (-i arguement)
-  property :multicast_address   #multicast address, example 224.0.0.1 (-m arguement)
-  property :port                #port, example 7000 (-p arguement)
-  property :hardrive            #hardrive to burn the image, example /dev/sda (nparguement)
-  property :node_topic          #the node
+  property :multicast_interface                           #multicast interface, example 10.0.1.200 (-i arguement)
+  property :multicast_address, :default => "224.0.0.1"    #multicast address, example 224.0.0.1 (-m arguement)
+  property :port                                          #port, example 7000 (-p arguement)
+  property :hardrive, :default => "/dev/sda"              #hardrive to burn the image, example /dev/sda (nparguement)
+  property :node_topic                                    #the node
 
    hook :after_initial_configured do |client|
-    client.property.app_id = client.hrn.nil? ? client.uid : client.hrn
-
-    #TODO do the folowing
-    #1. subscribe to nodes topic.
-    #2. create application proxy
-    #3. configure it with binary path and properties
-    #4. run the application
-    #5. on message inform EC
-
-    OmfCommon.comm.subscribe(client.property.node_topic) do |node_rc|
-      unless node_rc.error?
-        node_rc.create(:application, hrn: client.property.node_topic) do |reply_msg|
-          if reply_msg.success?
-            app = reply_msg.resource
-            app.on_subscribed do
-              app.on_message do |m|
-                if m.read_property("status_type") == 'APP_EVENT'
-                  client.inform(:status, {
-                    status_type: 'APP_EVENT',
-                    event: m.read_property("event"),
-                    app: m.read_property("app"),
-                    exit_code: m.read_property("exit_code"),
-                    msg: m.read_property("msg")
-                  }, :ALL)
-                end
-              end
-              app.configure(binary_path: client.property.binary_path)
-              sleep 1
-              params = {
-                :multicast_interface => {:type => 'String', :cmd => '-i', :mandatory => true, :order => 1, :value => client.property.multicast_interface},
-                :multicast_address => {:type => 'String', :cmd => '-m', :mandatory => true, :order => 2, :value => client.property.multicast_address},
-                :port => {:type => 'Integer', :cmd => '-p', :mandatory => true, :order => 3, :value => client.property.port},
-                :hardrive => {:type => 'String', :cmd => '', :mandatory => true, :order => 4, :value => client.property.hardrive}
-              }
-              app.configure(parameters: params)
-              sleep 1
-              app.configure(state: :running)
-            end
-          else
-            error ">>> App Resource failed to create - #{reply_msg[:reason]}"
-          end
-        end
+    node = nil
+    $all_nodes.each do |n|
+      if n[:node_name] == value[:node].to_sym
+        node = n
       end
     end
+    puts "Node : #{node}"
+    if node.nil?
+      puts "error: Node nill"
+      client.inform(:status, {
+        event_type: "EXIT",
+        exit_code: "-1",
+        msg: "Wrong node name."
+      }, :ALL)
+      client.release
+      return
+    end
+
+    client.property.multicast_interface = node[:node_ip]
+    client.property.app_id = client.hrn.nil? ? client.uid : client.hrn
+
+    command = "#{client.property.binary_path} - i #{client.property.multicast_interface} -m #{client.property.multicast_address} "
+    command += "-p #{client.property.port} #{client.property.hardrive}"
+
+    host = Net::Telnet.new("Host" => client.property.multicast_interface.to_s, "Timeout" => 60, "Prompt" => '(I have no name!@node)(\\d+)(:)(\\/)[#$]')
+    host.cmd(command.to_s) do |c|
+      client.inform(:status, {
+          status_type: 'APP_EVENT',
+          event: "STDOUT",
+          app: client.property.app_id,
+          node: client.property.node_topic,
+          msg: "#{c.to_s}"
+        }, :ALL)
+    end
+    host.close
   end
 end
 
-module OmfRc::ResourceProxy::ImagezipServer #frisbee server
+#this is the using the omf_rc :application resource controller
+# module OmfRc::ResourceProxy::Frisbee #frisbee client
+#   include OmfRc::ResourceProxyDSL
+#
+#   require 'omf_common/exec_app'
+#
+#   register_proxy :frisbee, :create_by => :frisbeeController
+#
+#   utility :common_tools
+#   utility :platform_tools
+#
+#   property :app_id, :default => nil
+#   property :binary_path, :default => '/usr/sbin/frisbee'
+#   property :map_err_to_out, :default => false
+#
+#   property :multicast_interface, :default => 10.0.0.200 #multicast interface, example 10.0.1.200 (-i arguement)
+#   property :multicast_address, :default => 224.0.0.1    #multicast address, example 224.0.0.1 (-m arguement)
+#   property :port                                        #port, example 7000 (-p arguement)
+#   property :hardrive, :default => "/dev/sda"            #hardrive to burn the image, example /dev/sda (nparguement)
+#   property :node_topic                                  #the node
+#
+#    hook :after_initial_configured do |client|
+#     client.property.app_id = client.hrn.nil? ? client.uid : client.hrn
+#
+#     OmfCommon.comm.subscribe(client.property.node_topic) do |node_rc|
+#       unless node_rc.error?
+#         node_rc.create(:application, hrn: client.property.node_topic) do |reply_msg|
+#           if reply_msg.success?
+#             app = reply_msg.resource
+#             app.on_subscribed do
+#               app.on_message do |m|
+#                 if m.read_property("status_type") == 'APP_EVENT'
+#                   client.inform(:status, {
+#                     status_type: 'APP_EVENT',
+#                     event: m.read_property("event"),
+#                     app: m.read_property("app"),
+#                     exit_code: m.read_property("exit_code"),
+#                     msg: m.read_property("msg")
+#                   }, :ALL)
+#                 end
+#               end
+#               app.configure(binary_path: client.property.binary_path)
+#               sleep 1
+#               params = {
+#                 :multicast_interface => {:type => 'String', :cmd => '-i', :mandatory => true, :order => 1, :value => client.property.multicast_interface},
+#                 :multicast_address => {:type => 'String', :cmd => '-m', :mandatory => true, :order => 2, :value => client.property.multicast_address},
+#                 :port => {:type => 'Integer', :cmd => '-p', :mandatory => true, :order => 3, :value => client.property.port},
+#                 :hardrive => {:type => 'String', :cmd => '', :mandatory => true, :order => 4, :value => client.property.hardrive}
+#               }
+#               app.configure(parameters: params)
+#               sleep 1
+#               app.configure(state: :running)
+#             end
+#           else
+#             error ">>> App Resource failed to create - #{reply_msg[:reason]}"
+#           end
+#         end
+#       end
+#     end
+#   end
+# end
+
+module OmfRc::ResourceProxy::ImagezipServer #Imagezip server
   include OmfRc::ResourceProxyDSL
 
   require 'omf_common/exec_app'
@@ -212,14 +295,14 @@ module OmfRc::ResourceProxy::ImagezipServer #frisbee server
   #
   work('build_command_line') do |res|
     cmd_line = "env -i " # Start with a 'clean' environment
-    cmd_line += res.property.binary_path + " " # the /usr/sbin/frisbeed
+    cmd_line += res.property.binary_path + " "
     cmd_line += "-d -l  " +  res.property.ip + " " + res.property.port.to_s + " > " +  res.property.image_name
     cmd_line
   end
 end
 
 
-module OmfRc::ResourceProxy::ImagezipClient
+module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
   include OmfRc::ResourceProxyDSL
 
   require 'omf_common/exec_app'
@@ -285,12 +368,15 @@ module OmfRc::ResourceProxy::ImagezipClient
   end
 end
 
-entity = OmfCommon::Auth::Certificate.create_from_x509(File.read("/home/ardadouk/.omf/urc.pem"),
-                                                       File.read("/home/ardadouk/.omf/user_rc_key.pem"))
+entity_cert = File.expand_path(@auth[:entity_cert])
+entity_key = File.expand_path(@auth[:entity_key])
+entity = OmfCommon::Auth::Certificate.create_from_x509(File.read(entity_cert), File.read(entity_key))
 
-OmfCommon.init(:development, communication: { url: 'xmpp://alpha:1234@localhost', auth: {} }) do
+trusted_roots = File.expand_path(@auth[:root_cert_dir])
+
+OmfCommon.init(:development, communication: { url: "xmpp://#{@xmpp[:username]}:#{@xmpp[:password]}@#{@xmpp[:server]}", auth: {} }) do
   OmfCommon.comm.on_connected do |comm|
-    OmfCommon::Auth::CertificateStore.instance.register_default_certs("/home/ardadouk/.omf/trusted_roots/")
+    OmfCommon::Auth::CertificateStore.instance.register_default_certs(trusted_roots)
     OmfCommon::Auth::CertificateStore.instance.register(entity, OmfCommon.comm.local_topic.address)
     OmfCommon::Auth::CertificateStore.instance.register(entity)
 
