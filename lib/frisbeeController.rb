@@ -39,7 +39,7 @@ module OmfRc::ResourceProxy::FrisbeeController
         break
       end
     end
-    res.property.ports
+    res.property.ports.to_s
   end
 end
 
