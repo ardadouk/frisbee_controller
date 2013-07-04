@@ -1,3 +1,4 @@
+require 'time'
 require 'omf_rc'
 require 'omf_common'
 require 'net/telnet'
