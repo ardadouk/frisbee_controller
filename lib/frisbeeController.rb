@@ -9,9 +9,10 @@ $stdout.sync = true
 @xmpp = @config[:xmpp]
 
 $all_nodes = []
+$ports = []
 module OmfRc::ResourceProxy::FrisbeeController
   include OmfRc::ResourceProxyDSL
-  property :ports, :default => []
+  property :ports
 
   register_proxy :frisbeeController
 
@@ -23,19 +24,21 @@ module OmfRc::ResourceProxy::FrisbeeController
     @nodes.each do |node|
       tmp = {node_name: node[0], node_ip: node[1][:ip], node_mac: node[1][:mac], node_cm_ip: node[1][:cm_ip]}
       $all_nodes << tmp
-    end
+    endreturn p
   end
 
   request :ports do |res|
     p = 7000
     loop do
-      if res.properties.port.include?(p)
+      if $ports.include?(p)
         p +=1
       else
-        res.property.ports << p
-        return p
+        $ports << p
+        res.property.ports = p
+        break
       end
     end
+    res.property.ports
   end
 end
 
