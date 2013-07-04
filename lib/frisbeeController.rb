@@ -159,7 +159,7 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
     client.property.multicast_interface = node[:node_ip]
     client.property.app_id = client.hrn.nil? ? client.uid : client.hrn
 
-    command = "#{client.property.binary_path} - i #{client.property.multicast_interface} -m #{client.property.multicast_address} "
+    command = "#{client.property.binary_path} -i #{client.property.multicast_interface} -m #{client.property.multicast_address} "
     command += "-p #{client.property.port} #{client.property.hardrive}"
     puts "########### running command is #{command}"
 
