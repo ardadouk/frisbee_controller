@@ -85,7 +85,7 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
       logger.info "Frisbeed: App Event from '#{app_id}' - #{event_type}: '#{msg}'"
       if event_type == 'EXIT' #maybe i should inform you for every event_type.
         res.inform(:status, {
-          status_type: 'APP_EVENT',
+          status_type: 'FRISBEED',
           event: event_type.to_s.upcase,
           app: app_id,
           exit_code: msg,
@@ -93,7 +93,7 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
         }, :ALL)
       elsif event_type == 'STDOUT'
         res.inform(:status, {
-          status_type: 'APP_EVENT',
+          status_type: 'FRISBEED',
           event: event_type.to_s.upcase,
           app: app_id,
           exit_code: msg,
@@ -163,16 +163,25 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
     command += "-p #{client.property.port} #{client.property.hardrive}"
     puts "########### running command is #{command}"
 
-    host = Net::Telnet.new("Host" => client.property.multicast_interface.to_s, "Timeout" => 60)#, "Prompt" => '(I have no name!@node)(\\d+)(:)(\\/)[#$]')
+    host = Net::Telnet.new("Host" => client.property.multicast_interface.to_s, "Timeout" => 60, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
     host.cmd(command.to_s) do |c|
-      client.inform(:status, {
-          status_type: 'APP_EVENT',
+      if c !=  "\n" && (c[0,8] == "Progress" || c[0,5] == "Wrote")
+        client.inform(:status, {
+          status_type: 'FRISBEE',
           event: "STDOUT",
           app: client.property.app_id,
           node: client.property.node_topic,
           msg: "#{c.to_s}"
         }, :ALL)
+      end
     end
+    client.inform(:status, {
+      status_type: 'FRISBEE',
+      event: "EXIT",
+      app: client.property.app_id,
+      node: client.property.node_topic,
+      msg: 'frisbee client completed.'
+    }, :ALL)
     host.close
   end
 end
