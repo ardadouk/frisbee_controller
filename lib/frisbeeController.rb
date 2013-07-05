@@ -315,7 +315,7 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
   utility :platform_tools
 
   property :app_id, :default => nil
-  property :binary_path, :default => '/usr/sbin/imagezip'
+  property :binary_path, :default => '/usr/bin/imagezip'
   property :map_err_to_out, :default => false
 
   property :ip, :default => "10.0.0.200"
