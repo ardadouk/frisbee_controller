@@ -163,7 +163,7 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
     command += "-p #{client.property.port} #{client.property.hardrive}"
     puts "########### running command is #{command}"
 
-    host = Net::Telnet.new("Host" => client.property.multicast_interface.to_s, "Timeout" => 60, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
+    host = Net::Telnet.new("Host" => client.property.multicast_interface.to_s, "Timeout" => 120, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
     host.cmd(command.to_s) do |c|
       if c !=  "\n" && (c[0,8] == "Progress" || c[0,5] == "Wrote")
         client.inform(:status, {
