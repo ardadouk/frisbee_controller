@@ -347,7 +347,7 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
     command = "#{client.property.binary_path} -z1 #{client.property.hardrive} - | nc -q 0 #{client.property.ip} #{client.property.port}"
     puts "########### running command is #{command}"
 
-    host = Net::Telnet.new("Host" => client.property.ip.to_s, "Timeout" => 60, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
+    host = Net::Telnet.new("Host" => node[:node_ip], "Timeout" => 60, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
     host.cmd(command.to_s) do |c|
       if c !=  "\n" #&& (c[0,8] == "Progress" || c[0,5] == "Wrote")
         client.inform(:status, {
