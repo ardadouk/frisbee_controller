@@ -265,7 +265,7 @@ module OmfRc::ResourceProxy::ImagezipServer #Imagezip server
 
   property :ip, :default => "10.0.0.200"
   property :port, :default => "9000"
-  property :image_name, :default => "image.ndz"
+  property :image_name, :default => "/tmp/image.ndz"
 
   hook :after_initial_configured do |server|
     server.property.app_id = server.hrn.nil? ? server.uid : server.hrn
