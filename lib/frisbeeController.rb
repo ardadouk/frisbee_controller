@@ -57,7 +57,7 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
   property :binary_path, :default => '/usr/sbin/frisbeed'
   property :map_err_to_out, :default => false
 
-  property :multicast_interface, :default => "#{$domain}.200" #multicast interface, example 10.0.0.200 (-i arguement)
+  property :multicast_interface, :default => "#{$domain}200" #multicast interface, example 10.0.0.200 (-i arguement)
   property :multicast_address, :default => "224.0.0.1"        #multicast address, example 224.0.0.1 (-m arguement)
   property :port                                              #port, example 7000 (-p arguement)
   property :speed, :default => 50000000                       #bandwidth speed in bits/sec, example 50000000 (-W arguement)
@@ -264,7 +264,7 @@ module OmfRc::ResourceProxy::ImagezipServer #Imagezip server
   property :binary_path, :default => '/bin/nc'
   property :map_err_to_out, :default => false
 
-  property :ip, :default => "#{$domain}.200"
+  property :ip, :default => "#{$domain}200"
   property :port, :default => "9000"
   property :image_name, :default => "/tmp/image.ndz"
 
