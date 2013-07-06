@@ -299,7 +299,7 @@ module OmfRc::ResourceProxy::ImagezipServer #Imagezip server
   work('build_command_line') do |res|
     cmd_line = "env -i " # Start with a 'clean' environment
     cmd_line += res.property.binary_path + " "
-    cmd_line += "-d -l  " +  res.property.ip + " " + res.property.port.to_s + " > " +  res.property.image_name
+    cmd_line += "-d -l " +  res.property.ip + " " + res.property.port.to_s + " > " +  res.property.image_name
     cmd_line
   end
 end
@@ -344,7 +344,7 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
 
     client.property.app_id = client.hrn.nil? ? client.uid : client.hrn
 
-    command = "#{client.property.binary_path} -z1 #{client.property.hardrive} - | nc -q 0 #{client.property.ip} #{client.property.port}"
+    command = "#{client.property.binary_path} -o -z1 #{client.property.hardrive} - | nc -q 0 #{client.property.ip} #{client.property.port}"
     puts "########### running command is #{command}"
 
     host = Net::Telnet.new("Host" => node[:node_ip], "Timeout" => 60, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
