@@ -8,7 +8,7 @@ $stdout.sync = true
 @config = YAML.load_file('../etc/configuration.yaml')
 @auth = @config[:auth]
 @xmpp = @config[:xmpp]
-$domain = @config[:domain]
+$domain = @config[:domain][:ip]
 
 $all_nodes = []
 $ports = []
