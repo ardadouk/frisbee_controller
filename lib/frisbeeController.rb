@@ -8,6 +8,7 @@ $stdout.sync = true
 @config = YAML.load_file('../etc/configuration.yaml')
 @auth = @config[:auth]
 @xmpp = @config[:xmpp]
+$domain = @config[:domain]
 
 $all_nodes = []
 $ports = []
@@ -19,7 +20,6 @@ module OmfRc::ResourceProxy::FrisbeeController
 
   hook :before_ready do |res|
     @config = YAML.load_file('../etc/configuration.yaml')
-    @domain = @config[:domain]
     @nodes = @config[:nodes]
 
     @nodes.each do |node|
@@ -57,14 +57,15 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
   property :binary_path, :default => '/usr/sbin/frisbeed'
   property :map_err_to_out, :default => false
 
-  property :multicast_interface, :default => "10.0.0.200" #multicast interface, example 10.0.1.200 (-i arguement)
-  property :multicast_address, :default => "224.0.0.1"    #multicast address, example 224.0.0.1 (-m arguement)
-  property :port                                          #port, example 7000 (-p arguement)
-  property :speed, :default => 50000000                   #bandwidth speed in bits/sec, example 50000000 (-W arguement)
-  property :image                                         #image to burn, example /var/lib/omf-images-5.4/baseline.ndz (no arguement)
+  property :multicast_interface, :default => "#{$domain}.200" #multicast interface, example 10.0.0.200 (-i arguement)
+  property :multicast_address, :default => "224.0.0.1"        #multicast address, example 224.0.0.1 (-m arguement)
+  property :port                                              #port, example 7000 (-p arguement)
+  property :speed, :default => 50000000                       #bandwidth speed in bits/sec, example 50000000 (-W arguement)
+  property :image                                             #image to burn, example /var/lib/omf-images-5.4/baseline.ndz (no arguement)
 
    hook :after_initial_configured do |server|
     server.property.app_id = server.hrn.nil? ? server.uid : server.hrn
+
 
     ExecApp.new(server.property.app_id, server.build_command_line, server.property.map_err_to_out) do |event_type, app_id, msg|
       server.process_event(server, event_type, app_id, msg)
@@ -263,7 +264,7 @@ module OmfRc::ResourceProxy::ImagezipServer #Imagezip server
   property :binary_path, :default => '/bin/nc'
   property :map_err_to_out, :default => false
 
-  property :ip, :default => "10.0.0.200"
+  property :ip, :default => "#{$domain}.200"
   property :port, :default => "9000"
   property :image_name, :default => "/tmp/image.ndz"
 
@@ -318,7 +319,7 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
   property :binary_path, :default => '/usr/bin/imagezip'
   property :map_err_to_out, :default => false
 
-  property :ip, :default => "10.0.0.200"
+  property :ip, :default => "#{$domain}.200"
   property :port
   property :hardrive, :default => "/dev/sda"
   property :node_topic
