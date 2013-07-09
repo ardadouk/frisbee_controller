@@ -319,7 +319,7 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
   property :binary_path, :default => '/usr/bin/imagezip'
   property :map_err_to_out, :default => false
 
-  property :ip, :default => "#{$domain}.200"
+  property :ip, :default => "#{$domain}200"
   property :port
   property :hardrive, :default => "/dev/sda"
   property :node_topic
@@ -345,7 +345,7 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
 
     client.property.app_id = client.hrn.nil? ? client.uid : client.hrn
 
-    command = "#{client.property.binary_path} -o -z1 #{client.property.hardrive} - | nc -q 0 #{client.property.ip} #{client.property.port}"
+    command = "#{client.property.binary_path} -o -z1 #{client.property.hardrive} - | /bin/nc -q 0 #{client.property.ip} #{client.property.port}"
     puts "########### running command is #{command}"
 
     host = Net::Telnet.new("Host" => node[:node_ip], "Timeout" => 60, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
