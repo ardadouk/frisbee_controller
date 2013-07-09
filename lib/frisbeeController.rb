@@ -320,7 +320,7 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
   property :map_err_to_out, :default => false
 
   property :ip, :default => "#{$domain}200"
-  property :port, default => "9000"
+  property :port, :default => "9000"
   property :hardrive, :default => "/dev/sda"
   property :node_topic
 
