@@ -52,11 +52,14 @@ def is_port_open?(port)
 
   request :ports do |res|
     p = 7000
+    puts "port '#{p}'"
     loop do
       if $ports.include?(p)
+        puts "included"
         p +=1
-      #elsif !res.port_open?(p)
-       # p +=1
+      elsif !res.port_open?(p)
+        puts "taken"
+        p +=1
       else
         $ports << p
         res.property.ports = p
