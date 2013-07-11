@@ -37,6 +37,19 @@ def is_port_open?(port)
     end
   end
 
+  def port_open?(port, seconds=1)
+    Timeout::timeout(seconds) do
+      begin
+        TCPSocket.new("127.0.0.1", port).close
+        return true
+      rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+        return false
+      end
+    end
+  rescue Timeout::Error
+    return false
+  end
+
   request :ports do |res|
     p = 7000
     loop do
@@ -53,18 +66,7 @@ def is_port_open?(port)
     res.property.ports.to_s
   end
 
-  def port_open?(port, seconds=1)
-    Timeout::timeout(seconds) do
-      begin
-        TCPSocket.new("127.0.0.1", port).close
-        return true
-      rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
-        return false
-      end
-    end
-  rescue Timeout::Error
-    return false
-  end
+
 end
 
 module OmfRc::ResourceProxy::Frisbeed #frisbee server
