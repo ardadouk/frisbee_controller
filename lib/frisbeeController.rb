@@ -74,7 +74,6 @@ def is_port_open?(port)
       rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
         return false
       end
-    end
   rescue Timeout::Error
     return false
   end
