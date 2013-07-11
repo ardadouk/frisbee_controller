@@ -55,8 +55,8 @@ def is_port_open?(port)
     loop do
       if $ports.include?(p)
         p +=1
-      elsif !res.port_open?(p)
-        p +=1
+      #elsif !res.port_open?(p)
+       # p +=1
       else
         $ports << p
         res.property.ports = p
