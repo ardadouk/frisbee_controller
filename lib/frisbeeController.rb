@@ -2,6 +2,8 @@ require 'time'
 require 'omf_rc'
 require 'omf_common'
 require 'net/telnet'
+require 'socket'
+require 'timeout'
 
 $stdout.sync = true
 
@@ -15,7 +17,14 @@ $ports = []
 module OmfRc::ResourceProxy::FrisbeeController
   include OmfRc::ResourceProxyDSL
   property :ports, :default => nil
-
+def is_port_open?(port)
+    begin
+      TCPSocket.new("127.0.0.1", port)
+    rescue Errno::ECONNREFUSED
+      return false
+    end
+    return true
+  end
   register_proxy :frisbeeController
 
   hook :before_ready do |res|
@@ -33,6 +42,8 @@ module OmfRc::ResourceProxy::FrisbeeController
     loop do
       if $ports.include?(p)
         p +=1
+      elsif !port_open?(p)
+        p +=1
       else
         $ports << p
         res.property.ports = p
@@ -40,6 +51,19 @@ module OmfRc::ResourceProxy::FrisbeeController
       end
     end
     res.property.ports.to_s
+  end
+
+  def port_open?(port, seconds=1)
+    Timeout::timeout(seconds) do
+      begin
+        TCPSocket.new("127.0.0.1", port).close
+        return true
+      rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+        return false
+      end
+    end
+  rescue Timeout::Error
+    return false
   end
 end
 
@@ -83,25 +107,25 @@ module OmfRc::ResourceProxy::Frisbeed #frisbee server
   # @param [String] msg the message carried by the event
   #
   def process_event(res, event_type, app_id, msg)
-      logger.info "Frisbeed: App Event from '#{app_id}' - #{event_type}: '#{msg}'"
-      if event_type == 'EXIT' #maybe i should inform you for every event_type.
-        res.inform(:status, {
-          status_type: 'FRISBEED',
-          event: event_type.to_s.upcase,
-          app: app_id,
-          exit_code: msg,
-          msg: msg
-        }, :ALL)
-      elsif event_type == 'STDOUT'
-        res.inform(:status, {
-          status_type: 'FRISBEED',
-          event: event_type.to_s.upcase,
-          app: app_id,
-          exit_code: msg,
-          msg: msg
-        }, :ALL)
-      end
-  end
+    logger.info "Frisbeed: App Event from '#{app_id}' - #{event_type}: '#{msg}'"
+    if event_type == 'EXIT' #maybe i should inform you for every event_type.
+      res.inform(:status, {
+        status_type: 'FRISBEED',
+        event: event_type.to_s.upcase,
+        app: app_id,
+        exit_code: msg,
+        msg: msg
+      }, :ALL)
+    elsif event_type == 'STDOUT'
+      res.inform(:status, {
+        status_type: 'FRISBEED',
+        event: event_type.to_s.upcase,
+        app: app_id,
+        exit_code: msg,
+        msg: msg
+      }, :ALL)
+    end
+end
 
   # Build the command line, which will be used to add a new user.
   #
@@ -162,7 +186,6 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
 
     command = "#{client.property.binary_path} -i #{client.property.multicast_interface} -m #{client.property.multicast_address} "
     command += "-p #{client.property.port} #{client.property.hardrive}"
-    puts "########### running command is #{command}"
 
     host = Net::Telnet.new("Host" => client.property.multicast_interface.to_s, "Timeout" => 200, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
     host.cmd(command.to_s) do |c|
