@@ -66,7 +66,7 @@ def is_port_open?(port)
     res.property.ports.to_s
   end
 
-  work('port_open?') do |res, port, seconds=1|
+  def port_open?(port, seconds=1)
     Timeout::timeout(seconds) do
       begin
         TCPSocket.new("127.0.0.1", port).close
@@ -74,6 +74,7 @@ def is_port_open?(port)
       rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
         return false
       end
+    end
   rescue Timeout::Error
     return false
   end
