@@ -6,6 +6,7 @@ require 'socket'
 require 'timeout'
 
 $stdout.sync = true
+$stdin.sync = true
 
 @config = YAML.load_file('../etc/configuration.yaml')
 @auth = @config[:auth]
@@ -389,8 +390,7 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
 
     host = Net::Telnet.new("Host" => node[:node_ip], "Timeout" => false)#, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
     host.cmd(command.to_s) do |c|
-      puts c
-      if c !=  "\n" #&& (c[0,8] == "Progress" || c[0,5] == "Wrote")
+      if c !=  "\n" && (c[0,4] == "/usr" || c[0,5] == "Wrote")
         client.inform(:status, {
           status_type: 'IMAGEZIP',
           event: "STDOUT",
