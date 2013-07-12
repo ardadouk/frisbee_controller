@@ -6,6 +6,7 @@ require 'socket'
 require 'timeout'
 
 $stdout.sync = true
+$stdin.sync = true
 
 @config = YAML.load_file('../etc/configuration.yaml')
 @auth = @config[:auth]
