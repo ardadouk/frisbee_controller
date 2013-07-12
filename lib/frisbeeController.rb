@@ -204,6 +204,7 @@ module OmfRc::ResourceProxy::Frisbee #frisbee client
     host = Net::Telnet.new("Host" => client.property.multicast_interface.to_s, "Timeout" => 200, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
     host.cmd(command.to_s) do |c|
       if c !=  "\n" && (c[0,8] == "Progress" || c[0,5] == "Wrote")
+        c = c.sub("\n","\n#{client.property.node_topic}: ")
         client.inform(:status, {
           status_type: 'FRISBEE',
           event: "STDOUT",
@@ -342,6 +343,7 @@ module OmfRc::ResourceProxy::ImagezipServer #Imagezip server
   end
 end
 
+#this one is using telnet to start imagezip on node
 module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
   include OmfRc::ResourceProxyDSL
 
