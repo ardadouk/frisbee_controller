@@ -390,7 +390,7 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
 
     host = Net::Telnet.new("Host" => node[:node_ip], "Timeout" => false)#, "Prompt" => /[\w().-]*[\$#>:.]\s?(?:\(enable\))?\s*$/)
     host.cmd(command.to_s) do |c|
-      if c !=  "\n" && c[0,5] != "\n/usr" && (c != "." || c != "..")
+      if c.to_s !=  "\n" && c[0,5] != "\n/usr" && c.to_s != "." && c.to_s != ".." && c.to_s != "..."
         puts '__' + c.to_s + '__'
         client.inform(:status, {
           status_type: 'IMAGEZIP',
