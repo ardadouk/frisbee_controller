@@ -392,13 +392,13 @@ module OmfRc::ResourceProxy::ImagezipClient #Imagezip client
     host.cmd(command.to_s) do |c|
       if c !=  "\n" && c[0,5] != "\n/usr" && (c != "." || c != "..")
         puts '__' + c.to_s + '__'
-#         client.inform(:status, {
-#           status_type: 'IMAGEZIP',
-#           event: "STDOUT",
-#           app: client.property.app_id,
-#           node: client.property.node_topic,
-#           msg: "#{c.to_s}"
-#         }, :ALL)
+        client.inform(:status, {
+          status_type: 'IMAGEZIP',
+          event: "STDOUT",
+          app: client.property.app_id,
+          node: client.property.node_topic,
+          msg: "#{c.to_s}"
+        }, :ALL)
       end
     end
 
